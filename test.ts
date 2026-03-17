@@ -8,4 +8,4 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-console.log(prisma);
+//console.log(prisma);

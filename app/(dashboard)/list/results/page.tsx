@@ -2,10 +2,11 @@ import FormModel from '@/components/FormModel';
 import Pagination from '@/components/Pagination';
 import Table from '@/components/Table';
 import TableSearch from '@/components/TableSearch';
-import { resultsData, role } from '@/lib/data';
+//import { resultsData, role } from '@/lib/data';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ITEM_PER_PAGE } from '@/lib/setting';
+import { getRole } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
@@ -33,42 +34,7 @@ type ResultList = {
   startTime: Date;
 };
 
-const columns = [
-  {
-    header: 'Title',
-    accessor: 'title',
-  },
-  {
-    header: 'Student',
-    accessor: 'student',
-  },
-  {
-    header: 'Score',
-    accessor: 'score',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Teacher',
-    accessor: 'teacher',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Class',
-    accessor: 'class',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Date',
-    accessor: 'date',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Actions',
-    accessor: 'actions',
-  },
-];
-
-const renderRow = (item: ResultList) => (
+const renderRow = (item: ResultList, role: string) => (
   <tr
     key={item.id}
     className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight "
@@ -85,7 +51,7 @@ const renderRow = (item: ResultList) => (
     </td>
     <td>
       <div className="flex items-center gap-2">
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'teacher') && (
           <>
             <FormModel table="result" type="update" data={item} />
             <FormModel table="result" type="delete" id={item.id} />
@@ -100,8 +66,48 @@ const ResultListPage = async ({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
+  const { role, userId } = await getRole();
   const { page, ...queryParams } = await searchParams;
   const p = page ? parseInt(page as string) : 1;
+
+  const columns = [
+    {
+      header: 'Title',
+      accessor: 'title',
+    },
+    {
+      header: 'Student',
+      accessor: 'student',
+    },
+    {
+      header: 'Score',
+      accessor: 'score',
+      classname: 'hidden lg:table-cell',
+    },
+    {
+      header: 'Teacher',
+      accessor: 'teacher',
+      classname: 'hidden lg:table-cell',
+    },
+    {
+      header: 'Class',
+      accessor: 'class',
+      classname: 'hidden lg:table-cell',
+    },
+    {
+      header: 'Date',
+      accessor: 'date',
+      classname: 'hidden lg:table-cell',
+    },
+    ...(role === 'admin' || role === 'teacher'
+      ? [
+          {
+            header: 'Actions',
+            accessor: 'actions',
+          },
+        ]
+      : []),
+  ];
   //console.log('searchParams =>', p);
 
   /* URL PARAMS CONDITION */
@@ -134,6 +140,30 @@ const ResultListPage = async ({
         }
       }
     }
+  }
+
+  //role conditions
+
+  switch (role) {
+    case 'admin':
+      break;
+    case 'teacher':
+      query.OR = [
+        { exam: { lesson: { teacherId: userId! } } },
+        { assignment: { lesson: { teacherId: userId! } } },
+      ];
+      break;
+    case 'student':
+      query.studentId = userId!;
+      break;
+
+    case 'parent':
+      query.student = {
+        parentId: userId!,
+      };
+      break;
+    default:
+      break;
   }
 
   const [dataRes, count] = await prisma.$transaction([
@@ -202,12 +232,18 @@ const ResultListPage = async ({
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src={'/sort.png'} alt="" width={14} height={14} />
             </button>
-            {role === 'admin' && <FormModel table="result" type="create" />}
+            {(role === 'admin' || role === 'teacher') && (
+              <FormModel table="result" type="create" />
+            )}
           </div>
         </div>
       </div>
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      <Table
+        columns={columns}
+        renderRow={(item) => renderRow(item, role)}
+        data={data}
+      />
       {/* Pagination */}
       <Pagination page={p} count={count} />
     </div>

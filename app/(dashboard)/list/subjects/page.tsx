@@ -2,7 +2,7 @@ import FormModel from '@/components/FormModel';
 import Pagination from '@/components/Pagination';
 import Table from '@/components/Table';
 import TableSearch from '@/components/TableSearch';
-import { role, subjectsData } from '@/lib/data';
+//import { role, subjectsData } from '@/lib/data';
 import {
   Lesson,
   Prisma,
@@ -11,6 +11,7 @@ import {
 } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ITEM_PER_PAGE } from '@/lib/setting';
+import { getRole } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
@@ -23,23 +24,7 @@ import React from 'react';
 
 type SubjectList = Subject & { teachers: Teacher[] };
 
-const columns = [
-  {
-    header: 'SubjectName',
-    accessor: 'name',
-  },
-  {
-    header: 'Teachers',
-    accessor: 'teachers',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Actions',
-    accessor: 'actions',
-  },
-];
-
-const renderRow = (item: SubjectList) => (
+const renderRow = (item: SubjectList, role: string) => (
   <tr
     key={item.id}
     className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight "
@@ -65,9 +50,29 @@ const SubjectListPage = async ({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
+  const { role, userId } = await getRole();
   const { page, ...queryParams } = await searchParams;
   const p = page ? parseInt(page as string) : 1;
   //console.log('searchParams =>', p);
+  const columns = [
+    {
+      header: 'SubjectName',
+      accessor: 'name',
+    },
+    {
+      header: 'Teachers',
+      accessor: 'teachers',
+      classname: 'hidden lg:table-cell',
+    },
+    ...(role === 'admin'
+      ? [
+          {
+            header: 'Actions',
+            accessor: 'actions',
+          },
+        ]
+      : []),
+  ];
 
   /* URL PARAMS CONDITION */
 
@@ -120,7 +125,11 @@ const SubjectListPage = async ({
         </div>
       </div>
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      <Table
+        columns={columns}
+        renderRow={(item) => renderRow(item, role)}
+        data={data}
+      />
       {/* Pagination */}
       <Pagination page={p} count={count} />
     </div>

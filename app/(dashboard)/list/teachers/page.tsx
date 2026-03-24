@@ -2,53 +2,18 @@ import FormModel from '@/components/FormModel';
 import Pagination from '@/components/Pagination';
 import Table from '@/components/Table';
 import TableSearch from '@/components/TableSearch';
-import { role, teachersData } from '@/lib/data';
+//import { role, teachersData } from '@/lib/data';
 import { Class, Prisma, Subject, Teacher } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ITEM_PER_PAGE } from '@/lib/setting';
+import { getRole } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 
 type TeacherList = Teacher & { subjects: Subject[] } & { classes: Class[] };
 
-const columns = [
-  {
-    header: 'Info',
-    accessor: 'info',
-  },
-  {
-    header: 'TeacherID',
-    accessor: 'teacherId',
-    classname: 'hidden md:table-cell',
-  },
-  {
-    header: 'Subjects',
-    accessor: 'subjects',
-    classname: 'hidden md:table-cell',
-  },
-  {
-    header: 'Classes',
-    accessor: 'classes',
-    classname: 'hidden md:table-cell',
-  },
-  {
-    header: 'Phone',
-    accessor: 'phone',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Address',
-    accessor: 'adddress',
-    classname: 'hidden lg:table-cell',
-  },
-  {
-    header: 'Actions',
-    accessor: 'actions',
-  },
-];
-
-const renderRow = (item: TeacherList) => (
+const renderRow = (item: TeacherList, role: string) => (
   <tr
     key={item.id}
     className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight "
@@ -98,9 +63,49 @@ const TeacherListPage = async ({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) => {
+  const { role, userId } = await getRole();
   const { page, ...queryParams } = await searchParams;
   const p = page ? parseInt(page as string) : 1;
   //console.log('searchParams =>', p);
+  const columns = [
+    {
+      header: 'Info',
+      accessor: 'info',
+    },
+    {
+      header: 'TeacherID',
+      accessor: 'teacherId',
+      classname: 'hidden md:table-cell',
+    },
+    {
+      header: 'Subjects',
+      accessor: 'subjects',
+      classname: 'hidden md:table-cell',
+    },
+    {
+      header: 'Classes',
+      accessor: 'classes',
+      classname: 'hidden md:table-cell',
+    },
+    {
+      header: 'Phone',
+      accessor: 'phone',
+      classname: 'hidden lg:table-cell',
+    },
+    {
+      header: 'Address',
+      accessor: 'adddress',
+      classname: 'hidden lg:table-cell',
+    },
+    ...(role === 'admin'
+      ? [
+          {
+            header: 'Actions',
+            accessor: 'actions',
+          },
+        ]
+      : []),
+  ];
 
   /* URL PARAMS CONDITION */
 
@@ -168,7 +173,11 @@ const TeacherListPage = async ({
         </div>
       </div>
       {/* List */}
-      <Table columns={columns} renderRow={renderRow} data={data} />
+      <Table
+        columns={columns}
+        renderRow={(item) => renderRow(item, role)}
+        data={data}
+      />
       {/* Pagination */}
       <Pagination page={p} count={count} />
     </div>
